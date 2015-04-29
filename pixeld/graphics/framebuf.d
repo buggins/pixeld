@@ -1,9 +1,11 @@
 module pixeld.graphics.framebuf;
 
 import dlangui.graphics.drawbuf;
+import dlangui.core.logger;
 
 import std.algorithm : min, max;
 import std.math : abs, pow, sin, cos, PI, sqrt;
+
 
 import pixeld.graphics.types;
 import pixeld.graphics.texture;
@@ -122,18 +124,30 @@ class FrameBuffer : ColorDrawBuf {
         translateCoords(pt3);
         translateCoords(pt4);
 
-        if (pt1.y + HALF_CELL_SIZE < 0 && pt2.y + HALF_CELL_SIZE < 0 && pt3.y + HALF_CELL_SIZE < 0 && pt4.y + HALF_CELL_SIZE < 0)
+        if (pt1.y + HALF_CELL_SIZE < 0 && pt2.y + HALF_CELL_SIZE < 0 && pt3.y + HALF_CELL_SIZE < 0 && pt4.y + HALF_CELL_SIZE < 0) {
+            Log.d("clip");
             return;
-        if (pt1.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt2.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt3.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt4.y + HALF_CELL_SIZE > DEEP_TABLE_LEN)
+        }
+        if (pt1.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt2.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt3.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt4.y + HALF_CELL_SIZE > DEEP_TABLE_LEN) {
+            Log.d("clip");
             return;
-        if (pt1.x < -DEEP_TABLE_LEN && pt2.x < -DEEP_TABLE_LEN && pt3.x < -DEEP_TABLE_LEN && pt4.x < -DEEP_TABLE_LEN)
+        }
+        if (pt1.x < -DEEP_TABLE_LEN && pt2.x < -DEEP_TABLE_LEN && pt3.x < -DEEP_TABLE_LEN && pt4.x < -DEEP_TABLE_LEN) {
+            Log.d("clip");
             return;
-        if (pt1.x > DEEP_TABLE_LEN && pt2.x > DEEP_TABLE_LEN && pt3.x > DEEP_TABLE_LEN && pt4.x > DEEP_TABLE_LEN)
+        }
+        if (pt1.x > DEEP_TABLE_LEN && pt2.x > DEEP_TABLE_LEN && pt3.x > DEEP_TABLE_LEN && pt4.x > DEEP_TABLE_LEN) {
+            Log.d("clip");
             return;
-        if (pt1.z < -DEEP_TABLE_LEN && pt2.z < -DEEP_TABLE_LEN && pt3.z < -DEEP_TABLE_LEN && pt4.z < -DEEP_TABLE_LEN)
+        }
+        if (pt1.z < -DEEP_TABLE_LEN && pt2.z < -DEEP_TABLE_LEN && pt3.z < -DEEP_TABLE_LEN && pt4.z < -DEEP_TABLE_LEN) {
+            Log.d("clip");
             return;
-        if (pt1.z > DEEP_TABLE_LEN && pt2.z > DEEP_TABLE_LEN && pt3.z > DEEP_TABLE_LEN && pt4.z > DEEP_TABLE_LEN)
+        }
+        if (pt1.z > DEEP_TABLE_LEN && pt2.z > DEEP_TABLE_LEN && pt3.z > DEEP_TABLE_LEN && pt4.z > DEEP_TABLE_LEN) {
+            Log.d("clip");
             return;
+        }
 
         int miny = min(pt1.y, pt2.y, pt3.y, pt4.y) + HALF_CELL_SIZE;
         if (miny < 0)
@@ -177,7 +191,7 @@ class FrameBuffer : ColorDrawBuf {
                 p1.y = cast(int)(pt1.y + cast(long)dy1 * i / maxdist);
                 p1.z = cast(int)(pt1.z + cast(long)dz1 * i / maxdist);
 
-                if (pt1.y < -HALF_CELL_SIZE || pt1.y >= DEEP_TABLE_LEN) // Z plane clipping
+                if (p1.y < -HALF_CELL_SIZE || p1.y >= DEEP_TABLE_LEN) // Z plane clipping
                     continue; // y out of range
 
                 point3d p2; // top
@@ -209,7 +223,7 @@ class FrameBuffer : ColorDrawBuf {
                 if (stripeLen < 1)
                     stripeLen = 1;
 
-                tex.getStripe(textureStripeBuffer.ptr, t1.x, t1.y, (t2.x - t1.x) / stripeLen, (t2.y - t1.y) / stripeLen, stripeLen);
+                tex.getStripe(textureStripeBuffer.ptr, t1.x, t1.y, 256 * (t2.x - t1.x) / stripeLen, 256 * (t2.y - t1.y) / stripeLen, stripeLen);
                 int dy = pp1.y < pp2.y ? 1 : -1;
                 int x = pp1.x;
                 int idx = 0;

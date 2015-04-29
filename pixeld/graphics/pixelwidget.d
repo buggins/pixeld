@@ -15,7 +15,7 @@ import pixeld.graphics.framebuf;
 
 Texture createWallTexture() {
     Texture t = new Texture(8);
-    t.fillWith(0xC08080);
+    t.fillWith(0x802020);
     Pixel cl2 = Pixel(0x706020);
     int off = 16;
     for (int y = 0; y < 256; y += 32) {
@@ -26,6 +26,8 @@ Texture createWallTexture() {
         }
         off = off == 16 ? 48 : 16;
     }
+    t.filter();
+    t.filter();
     return t;
 }
 

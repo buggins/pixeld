@@ -55,6 +55,66 @@ class TextureLayer {
         _buf = new Pixel[_size * _size];
     }
 
+    /// if value < 0, set it to 9, if > 255 set to 255
+    void clampSize(ref int n) {
+        if (n < 0)
+            n = 0;
+        else if (n >= _size)
+            n = _size - 1;
+    }
+
+    Pixel peekGaussAvg(int x, int y) {
+        Pixel px00 = getPixelRepeat(x-1, y-1);
+        Pixel px01 = getPixelRepeat(x+0, y-1);
+        Pixel px02 = getPixelRepeat(x+1, y-1);
+        Pixel px10 = getPixelRepeat(x-1, y+0);
+        Pixel px11 = getPixelRepeat(x+0, y+0);
+        Pixel px12 = getPixelRepeat(x+1, y+0);
+        Pixel px20 = getPixelRepeat(x-1, y+1);
+        Pixel px21 = getPixelRepeat(x+0, y+1);
+        Pixel px22 = getPixelRepeat(x+1, y+1);
+        int sr0 = cast(int)px00.r + px02.r + px20.r + px22.r;
+        int sg0 = cast(int)px00.g + px02.g + px20.g + px22.g;
+        int sb0 = cast(int)px00.b + px02.b + px20.b + px22.b;
+        int sa0 = cast(int)px00.a + px02.a + px20.a + px22.a;
+        int sr1 = cast(int)px01.r + px10.r + px12.r + px21.r;
+        int sg1 = cast(int)px01.g + px10.g + px12.g + px21.g;
+        int sb1 = cast(int)px01.b + px10.b + px12.b + px21.b;
+        int sa1 = cast(int)px01.a + px10.a + px12.a + px21.a;
+        Pixel res;
+        res.r = cast(ubyte)((sr0 + sr1 * 2 + 4 * px11.r) >> 4);
+        res.g = cast(ubyte)((sg0 + sg1 * 2 + 4 * px11.g) >> 4);
+        res.b = cast(ubyte)((sb0 + sb1 * 2 + 4 * px11.b) >> 4);
+        res.a = cast(ubyte)((sa0 + sa1 * 2 + 4 * px11.a) >> 4);
+        return res;
+    }
+
+    private static __gshared Pixel[0x10000] _filterBuffer;
+    /// gaussian filter
+    void filter() {
+        for (int y = 0; y < _size; y++) {
+            for (int x = 0; x < _size; x++) {
+                _filterBuffer[(y << _sizeLog2) + x] = peekGaussAvg(x, y);
+            }
+        }
+        for (int i = _size * _size - 1; i >= 0; i--)
+            _buf[i] = _filterBuffer[i];
+    }
+
+    void fillRect(int x0, int y0, int x1, int y1, Pixel color) {
+        clampSize(x0);
+        clampSize(y0);
+        clampSize(x1);
+        clampSize(y1);
+        if (x0 >= x1 || y0 >= y1)
+            return;
+        for(int y = y0; y < y1; y++) {
+            Pixel * row = _buf.ptr + (y << _sizeLog2);
+            for (int x = x0; x < x1; x++)
+                row[x] = color;
+        }
+    }
+
     /// set pixel with coords _size * _size (coords outside bounds are ignored)
     void putPixel(int x, int y, Pixel px) {
         if (x < 0 || y < 0 || x >= _size || y >= _size)
@@ -221,40 +281,48 @@ class TextureLayer {
             return Pixel(r1, g1, b1, a1);
         } else {
             int ddy = dy ^ 0xFF;
-            return Pixel(((r0 * ddy + r1 * dy) >> 8), 
-                         ((g0 * ddy + g1 * dy) >> 8), 
-                         ((b0 * ddy + b1 * dy) >> 8), 
+            return Pixel(((r0 * ddy + r1 * dy) >> 8),
+                         ((g0 * ddy + g1 * dy) >> 8),
+                         ((b0 * ddy + b1 * dy) >> 8),
                          ((a0 * ddy + a1 * dy) >> 8));
         }
     }
     void getStripeRepeatedInterpolated(Pixel * buf, int x, int y, int dx, int dy, int length) {
         assert(length < 1024);
+        x = x << 8;
+        y = y << 8;
         for (int i = 0; i < length; i++) {
-            buf[i] = getRepeatedInterpolated(x, y);
+            buf[i] = getRepeatedInterpolated((x >> 8), (y >> 8));
             x += dx;
             y += dy;
         }
     }
     void getStripeRepeated(Pixel * buf, int x, int y, int dx, int dy, int length) {
         assert(length < 1024);
+        x = x << 8;
+        y = y << 8;
         for (int i = 0; i < length; i++) {
-            buf[i] = getRepeated(x, y);
+            buf[i] = getRepeated((x >> 8), (y >> 8));
             x += dx;
             y += dy;
         }
     }
     void getStripeClamped(Pixel * buf, int x, int y, int dx, int dy, int length) {
         assert(length < 1024);
+        x = x << 8;
+        y = y << 8;
         for (int i = 0; i < length; i++) {
-            buf[i] = getClamped(x, y);
+            buf[i] = getClamped((x >> 8), (y >> 8));
             x += dx;
             y += dy;
         }
     }
     void getStripeClampedInterpolated(Pixel * buf, int x, int y, int dx, int dy, int length) {
         assert(length < 1024);
+        x = x << 8;
+        y = y << 8;
         for (int i = 0; i < length; i++) {
-            buf[i] = getClampedInterpolated(x, y);
+            buf[i] = getClampedInterpolated((x >> 8), (y >> 8));
             x += dx;
             y += dy;
         }
@@ -265,9 +333,9 @@ class TextureLayer {
 
 class Texture : TextureLayer {
     /// wrapping: when true - clamped, false - repeated
-    bool clamp;
+    bool clamp = false;
     /// interpolation: when true - linear interpolation, false - take nearest
-    bool interpolation;
+    bool interpolation = true;
 
     this(int sizeLog2) {
         super(sizeLog2);
