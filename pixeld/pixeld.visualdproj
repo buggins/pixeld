@@ -204,7 +204,10 @@
  </Config>
  <Folder name="pixeld">
   <Folder name="graphics">
+   <File path="graphics\framebuf.d" />
    <File path="graphics\pixelwidget.d" />
+   <File path="graphics\texture.d" />
+   <File path="graphics\types.d" />
   </Folder>
   <File path="winmain.d" />
  </Folder>
