@@ -259,9 +259,55 @@ class TextureLayer {
                          ((a0 * ddy + a1 * dy) >> 8));
         }
     }
+    void getStripeRepeatedInterpolated(Pixel * buf, int x, int y, int dx, int dy, int length) {
+        assert(length <= textureStripeBuffer.length);
+        for (int i = 0; i < length; i++) {
+            buf[i] = getRepeatedInterpolated(x, y);
+            x += dx;
+            y += dy;
+        }
+    }
+    void getStripeRepeated(Pixel * buf, int x, int y, int dx, int dy, int length) {
+        assert(length <= textureStripeBuffer.length);
+        for (int i = 0; i < length; i++) {
+            buf[i] = getRepeated(x, y);
+            x += dx;
+            y += dy;
+        }
+    }
+    void getStripeClamped(Pixel * buf, int x, int y, int dx, int dy, int length) {
+        assert(length <= textureStripeBuffer.length);
+        for (int i = 0; i < length; i++) {
+            buf[i] = getClamped(x, y);
+            x += dx;
+            y += dy;
+        }
+    }
+    void getStripeClampedInterpolated(Pixel * buf, int x, int y, int dx, int dy, int length) {
+        assert(length <= textureStripeBuffer.length);
+        for (int i = 0; i < length; i++) {
+            buf[i] = getClampedInterpolated(x, y);
+            x += dx;
+            y += dy;
+        }
+    }
+}
+
+__gshared Pixel[1024] textureStripeBuffer;
+
+/// swap two values
+void swap(T)(ref T pt1, ref T pt2) {
+    T tmp = pt1;
+    pt1 = pt2;
+    pt2 = tmp;
 }
 
 class Texture : TextureLayer {
+    /// wrapping: when true - clamped, false - repeated
+    bool clamp;
+    /// interpolation: when true - linear interpolation, false - take nearest
+    bool interpolation;
+
     this(int sizeLog2) {
         super(sizeLog2);
     }
@@ -286,7 +332,51 @@ class Texture : TextureLayer {
             currentLayer = nextLayer;
         }
     }
-    TextureLayer[] _mipMap;
+    private TextureLayer[] _mipMap;
+
+    /// get stripe of texture pixels, starting point is (x, y), step to next pixel is (dx, dy)
+    void getStripe(Pixel * buf, int x, int y, int dx, int dy, int length) {
+        TextureLayer layer = this;
+        if (_mipMap.length > 0) {
+            // TODO: mipmap support
+            // select suitable mipmap layer
+        }
+        if (interpolation) {
+            if (clamp) {
+                layer.getStripeClampedInterpolated(buf, x, y, dx, dy, length);
+            } else {
+                layer.getStripeRepeatedInterpolated(buf, x, y, dx, dy, length);
+            }
+        } else {
+            if (clamp) {
+                layer.getStripeClamped(buf, x, y, dx, dy, length);
+            } else {
+                layer.getStripeRepeated(buf, x, y, dx, dy, length);
+            }
+        }
+    }
+
+    Pixel getTexel(int x, int y, int depth) {
+        TextureLayer layer = this;
+        if (_mipMap.length > 0) {
+            // TODO: mipmap support
+            // select suitable mipmap layer
+        }
+        if (interpolation) {
+            if (clamp) {
+                return layer.getClampedInterpolated(x, y);
+            } else {
+                return layer.getRepeatedInterpolated(x, y);
+            }
+        } else {
+            if (clamp) {
+                return layer.getClamped(x, y);
+            } else {
+                return layer.getRepeated(x, y);
+            }
+        }
+    }
+
 }
 
 /// ZRGB buffer
@@ -390,6 +480,114 @@ class FrameBuffer : ColorDrawBuf {
                 int m11 = ca;
                 pt.x = (x * m00 + y * m10) / 256;
                 pt.y = (x * m01 + y * m11) / 256;
+            }
+        }
+    }
+
+    /// draw, points are in clockwise order, pt1 is usually bottom left, pt2 top left, pt3 top right, pt4 bottom right
+    void drawTexture(Texture tex, point3d pt1, point3d pt2, point3d pt3, point3d pt4, point2d tx1, point2d tx2, point2d tx3, point2d tx4) {
+        translateCoords(pt1);
+        translateCoords(pt2);
+        translateCoords(pt3);
+        translateCoords(pt4);
+
+        if (pt1.y + HALF_CELL_SIZE < 0 && pt2.y + HALF_CELL_SIZE < 0 && pt3.y + HALF_CELL_SIZE < 0 && pt4.y + HALF_CELL_SIZE < 0)
+            return;
+        if (pt1.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt2.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt3.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt4.y + HALF_CELL_SIZE > DEEP_TABLE_LEN)
+            return;
+        if (pt1.x < -DEEP_TABLE_LEN && pt2.x < -DEEP_TABLE_LEN && pt3.x < -DEEP_TABLE_LEN && pt4.x < -DEEP_TABLE_LEN)
+            return;
+        if (pt1.x > DEEP_TABLE_LEN && pt2.x > DEEP_TABLE_LEN && pt3.x > DEEP_TABLE_LEN && pt4.x > DEEP_TABLE_LEN)
+            return;
+        if (pt1.z < -DEEP_TABLE_LEN && pt2.z < -DEEP_TABLE_LEN && pt3.z < -DEEP_TABLE_LEN && pt4.z < -DEEP_TABLE_LEN)
+            return;
+        if (pt1.z > DEEP_TABLE_LEN && pt2.z > DEEP_TABLE_LEN && pt3.z > DEEP_TABLE_LEN && pt4.z > DEEP_TABLE_LEN)
+            return;
+
+        int miny = min(pt1.y, pt2.y, pt3.y, pt4.y) + HALF_CELL_SIZE;
+        if (miny < 0)
+            miny = 0;
+        else if (miny >= DEEP_TABLE_LEN)
+            miny = DEEP_TABLE_LEN - 1;
+        int ydeepFactor = deepFuncTable.ptr[miny];
+        int step = 0xFFF * 255 / ydeepFactor / _dx;
+        if (step <= 0)
+            step = 1;
+
+        if (pt1.x == pt2.x && pt1.y == pt2.y && pt3.x == pt4.x && pt3.y == pt4.y) {
+
+            if (pt1.y > pt4.y) {
+                // swap
+                swap(pt1, pt4);
+                swap(pt2, pt3);
+                swap(tx1, tx4);
+                swap(tx2, tx3);
+            }
+
+            // vertical (wall)
+            int dx1 = pt4.x - pt1.x;
+            int dy1 = pt4.y - pt1.y;
+            int dz1 = pt4.z - pt1.z;
+            int dx2 = pt3.x - pt2.x;
+            int dy2 = pt3.y - pt2.y;
+            int dz2 = pt3.z - pt2.z;
+
+            int dtx1 = tx4.x - tx1.x;
+            int dty1 = tx4.y - tx1.y;
+            int dtx2 = tx3.x - tx2.x;
+            int dty2 = tx3.y - tx2.y;
+
+            int maxdist = max(abs(dx1), abs(dy1), abs(dz1), abs(dx2), abs(dy2), abs(dz2));
+
+            int lastx = -1;
+            for (int i = 0; i < maxdist; i += step) {
+                point3d p1; // bottom
+                p1.x = cast(int)(pt1.x + cast(long)dx1 * i / maxdist);
+                p1.y = cast(int)(pt1.y + cast(long)dy1 * i / maxdist);
+                p1.z = cast(int)(pt1.z + cast(long)dz1 * i / maxdist);
+
+                if (pt1.y < -HALF_CELL_SIZE || pt1.y >= DEEP_TABLE_LEN) // Z plane clipping
+                    continue; // y out of range
+
+                point3d p2; // top
+                p2.x = cast(int)(pt2.x + cast(long)dx2 * i / maxdist);
+                p2.y = cast(int)(pt2.y + cast(long)dy2 * i / maxdist);
+                p2.z = cast(int)(pt2.z + cast(long)dz2 * i / maxdist);
+
+                point3d pp1 = mapCoordsNoCheck(p1);
+                point3d pp2 = mapCoordsNoCheck(p2);
+
+                if (pp1.x < 0 || pp1.x >= _dx) // left or right
+                    continue;
+                if (pp1.x == lastx)
+                    continue;
+                lastx = pp1.x;
+                if (pp1.y < 0 && pp2.y < 0) // below
+                    continue;
+                if (pp1.y >= _dy && pp2.y >= _dy) // above
+                    continue;
+
+                point2d t1; // bottom texture coord
+                t1.x = cast(int)(tx1.x + cast(long)dtx1 * i / maxdist);
+                t1.y = cast(int)(tx1.y + cast(long)dty1 * i / maxdist);
+                point2d t2; // top texture coord
+                t2.x = cast(int)(tx2.x + cast(long)dtx2 * i / maxdist);
+                t2.y = cast(int)(tx2.y + cast(long)dty2 * i / maxdist);
+
+                int stripeLen = abs(pp1.y - pp2.y);
+                if (stripeLen < 1)
+                    stripeLen = 1;
+
+                tex.getStripe(textureStripeBuffer.ptr, t1.x, t1.y, (t2.x - t1.x) / stripeLen, (t2.y - t1.y) / stripeLen, stripeLen);
+                int dy = pp1.y < pp2.y ? 1 : -1;
+                int x = pp1.x;
+                int idx = 0;
+                point3d p = pp1;
+                for (int y = pp1.y; idx < stripeLen; idx++, y += dy) {
+                    p.y = y;
+                    if (y >= 0 && y < dy)
+                        pixel2d(p, textureStripeBuffer.ptr[idx].pixel);
+                }
             }
         }
     }
