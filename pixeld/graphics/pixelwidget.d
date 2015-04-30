@@ -27,6 +27,19 @@ Texture createWallTexture() {
         off = off == 16 ? 48 : 16;
     }
     t.filter();
+    return t;
+}
+
+Texture createFloorTexture() {
+    Texture t = new Texture(8);
+    t.fillWith(0x504020);
+    Pixel cl2 = Pixel(0x706020);
+    int c3 = 256 / 3;
+    for (int y = 0; y < 3; y++) {
+        for (int x = 0; x < 3; x++) {
+            t.fillRect(x*c3 + 4, y*c3 + 4, (x+1)*c3 - 4, (y+1)*c3 - 4, Pixel(0x400020));
+        }
+    }
     t.filter();
     return t;
 }
@@ -37,6 +50,7 @@ class PixelWidget : Widget {
     private ColorDrawBuf _buf;
 
     private Texture _wallTexture;
+    private Texture _floorTexture;
 
     this() {
         super("pixelbuf");
@@ -48,6 +62,7 @@ class PixelWidget : Widget {
         focusable = true;
 
         _wallTexture = createWallTexture();
+        _floorTexture = createFloorTexture();
 
         initFramebuffer(256 * 2, 192 * 2, 1);
         drawScene();
@@ -59,6 +74,7 @@ class PixelWidget : Widget {
     ~this() {
         destroyFrameBuffer();
         destroy(_wallTexture);
+        destroy(_floorTexture);
     }
 
 
@@ -99,22 +115,22 @@ class PixelWidget : Widget {
         //_framebuf.line3d(point3d(128, 512, 0), point3d(128, 768, 0), 0xE08080);
 
         drawCell(0, 0, 0xFF0000);
-        drawCell(0, 1, 0xFFFF00);
-        drawCell(0, 2, 0x80FFFF);
-        drawCell(-1, 2, 0x8080FF);
-        drawCell(-2, 2, 0x8080FF);
-        drawCell(+1, 2, 0x8080FF);
-        drawCell(0, 3, 0x80FFFF);
-        drawCell(-1, 3, 0xFF80FF);
-        drawCell(+1, 3, 0xFFC0FF);
-        drawCell(-2, 3, 0xFFC0FF);
-        drawCell(+2, 3, 0xFFC0FF);
-        drawCell(-3, 3, 0xFFC0FF);
-        drawCell(+3, 3, 0xFFC0FF);
-        drawCell(0, 4, 0x80FFFF);
-        drawCell(0, 5, 0x80FFFF);
-        drawCell(0, 6, 0x80FFFF);
-        drawCell(0, 7, 0x80FFFF);
+        //drawCell(0, 1, 0xFFFF00);
+        //drawCell(0, 2, 0x80FFFF);
+        //drawCell(-1, 2, 0x8080FF);
+        //drawCell(-2, 2, 0x8080FF);
+        //drawCell(+1, 2, 0x8080FF);
+        //drawCell(0, 3, 0x80FFFF);
+        //drawCell(-1, 3, 0xFF80FF);
+        //drawCell(+1, 3, 0xFFC0FF);
+        //drawCell(-2, 3, 0xFFC0FF);
+        //drawCell(+2, 3, 0xFFC0FF);
+        //drawCell(-3, 3, 0xFFC0FF);
+        //drawCell(+3, 3, 0xFFC0FF);
+        //drawCell(0, 4, 0x80FFFF);
+        //drawCell(0, 5, 0x80FFFF);
+        //drawCell(0, 6, 0x80FFFF);
+        //drawCell(0, 7, 0x80FFFF);
     }
 
     void drawCell(int x, int y, uint cl) {
@@ -142,7 +158,7 @@ class PixelWidget : Widget {
 
         _framebuf.drawTexture(_wallTexture, point3d(x-128, y - 128, 0), point3d(x-128, y - 128, 192), point3d(x-128, y + 128, 192), point3d(x-128, y + 128, 0),
                               point2d(0, 0), point2d(0, 0xFFFF), point2d(0xFFFF, 0xFFFF), point2d(0xFFFF, 0));
-        _framebuf.drawTexture(_wallTexture, point3d(x-128, y - 128, 0), point3d(x-128, y + 128, 0), point3d(x+128, y + 128, 0), point3d(x+128, y - 128, 0),
+        _framebuf.drawTexture(_floorTexture, point3d(x-128, y - 128, 0), point3d(x-128, y + 128, 0), point3d(x+128, y + 128, 0), point3d(x+128, y - 128, 0),
                               point2d(0, 0), point2d(0, 0xFFFF), point2d(0xFFFF, 0xFFFF), point2d(0xFFFF, 0));
     }
 
@@ -224,7 +240,7 @@ class PixelWidget : Widget {
         if (elapsed >= 1000000) {
             elapsed -= 1000000;
             //_framebuf.rotationAngle += 2;
-            _framebuf.translationY += 1;
+            //_framebuf.translationY += 1;
         }
         //_framebuf.translationY += 1;
         //_framebuf.translationX += 1;
