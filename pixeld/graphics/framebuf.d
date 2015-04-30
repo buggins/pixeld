@@ -218,17 +218,17 @@ class FrameBuffer : ColorDrawBuf {
             int lastx = -1;
             for (int i = 0; i < maxdist; i += step) {
                 point3d p1; // bottom
-                p1.x = cast(int)(pt1.x + cast(long)dx1 * i / maxdist);
-                p1.y = cast(int)(pt1.y + cast(long)dy1 * i / maxdist);
-                p1.z = cast(int)(pt1.z + cast(long)dz1 * i / maxdist);
+                p1.x = cast(int)(pt1.x + dx1 * i / maxdist);
+                p1.y = cast(int)(pt1.y + dy1 * i / maxdist);
+                p1.z = cast(int)(pt1.z + dz1 * i / maxdist);
 
                 if (p1.y < -HALF_CELL_SIZE || p1.y >= DEEP_TABLE_LEN) // Z plane clipping
                     continue; // y out of range
 
                 point3d p2; // top
-                p2.x = cast(int)(pt2.x + cast(long)dx2 * i / maxdist);
-                p2.y = cast(int)(pt2.y + cast(long)dy2 * i / maxdist);
-                p2.z = cast(int)(pt2.z + cast(long)dz2 * i / maxdist);
+                p2.x = cast(int)(pt2.x + dx2 * i / maxdist);
+                p2.y = cast(int)(pt2.y + dy2 * i / maxdist);
+                p2.z = cast(int)(pt2.z + dz2 * i / maxdist);
 
                 point3d pp1 = mapCoordsNoCheck(p1);
                 point3d pp2 = mapCoordsNoCheck(p2);
@@ -263,11 +263,11 @@ class FrameBuffer : ColorDrawBuf {
                 lastx = pp1.x;
 
                 point2d t1; // bottom texture coord
-                t1.x = cast(int)(tx1.x + cast(long)dtx1 * i / maxdist);
-                t1.y = cast(int)(tx1.y + cast(long)dty1 * i / maxdist);
+                t1.x = cast(int)(tx1.x + dtx1 * i / maxdist);
+                t1.y = cast(int)(tx1.y + dty1 * i / maxdist);
                 point2d t2; // top texture coord
-                t2.x = cast(int)(tx2.x + cast(long)dtx2 * i / maxdist);
-                t2.y = cast(int)(tx2.y + cast(long)dty2 * i / maxdist);
+                t2.x = cast(int)(tx2.x + dtx2 * i / maxdist);
+                t2.y = cast(int)(tx2.y + dty2 * i / maxdist);
 
                 stripeLen = abs(pp1.y - pp2.y);
                 if (stripeLen < 1)
@@ -349,7 +349,7 @@ class FrameBuffer : ColorDrawBuf {
                 point3d pp1 = mapCoordsNoCheck(p1);
                 point3d pp2 = mapCoordsNoCheck(p2);
 
-                if ((pp1.x < 0 && pp2.x < 0) || (pp2.x >= _dx && pp2.x >= _dx)) // left or right
+                if ((pp1.x < 0 && pp2.x < 0) || (pp1.x >= _dx && pp2.x >= _dx)) // left or right
                     continue;
                 if (pp1.y == lasty)
                     continue;

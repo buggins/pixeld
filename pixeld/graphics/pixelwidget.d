@@ -61,17 +61,18 @@ class PixelWidget : Widget {
 
         focusable = true;
 
-        _wallTexture = new Texture("stone_wall_4", 3); // createWallTexture();
-        _floorTexture = new Texture("stone_wall_1", 3); // createFloorTexture();
+        _wallTexture = new Texture("stone_wall_4", 4); // createWallTexture();
+        _floorTexture = new Texture("stone_wall_1", 4); // createFloorTexture();
 
 
-        static if (true)
+        static if (false)
             initFramebuffer(256, 192, 2);
         else
             initFramebuffer(256 * 2, 192 * 2, 1);
 
 
-        //_framebuf.translationY = 64;
+        //_framebuf.rotationAngle = 270;
+        //_framebuf.translationY = -64;
         //_framebuf.translationX = 64;
 
         drawScene();
@@ -253,7 +254,7 @@ class PixelWidget : Widget {
         if (elapsed >= 1000000) {
             elapsed -= 1000000;
             //_framebuf.rotationAngle += 2;
-            _framebuf.translationY += 1;
+            //_framebuf.translationY += 1;
         }
         //_framebuf.translationY += 1;
         //_framebuf.translationX += 1;

@@ -288,31 +288,31 @@ class TextureLayer {
         // dx, dy: fractional part, 0..255
         int dx = (x >> _shiftx256) & 0xFF;
         int dy = (y >> _shifty256) & 0xFF;
-        Pixel px00 = getPixelClamp(xx, yy);
-        Pixel px01 = getPixelClamp(xx + 1, yy);
-        Pixel px10 = getPixelClamp(xx, yy + 1);
-        Pixel px11 = getPixelClamp(xx + 1, yy + 1);
+        Pixel px00 = getPixelRepeat(xx, yy);
+        Pixel px01 = getPixelRepeat(xx + 1, yy);
+        Pixel px10 = getPixelRepeat(xx, yy + 1);
+        Pixel px11 = getPixelRepeat(xx + 1, yy + 1);
         int r0, g0, b0, a0, r1, g1, b1, a1;
-        if (dx < 16) {
-            r0 = px00.r;
-            g0 = px00.g;
-            b0 = px00.b;
-            a0 = px00.a;
-            r1 = px10.r;
-            g1 = px10.g;
-            b1 = px10.b;
-            a1 = px10.a;
-        } else if (dx >= 256 - 16) {
-            r0 = px01.r;
-            g0 = px01.g;
-            b0 = px01.b;
-            a0 = px01.a;
-            r1 = px11.r;
-            g1 = px11.g;
-            b1 = px11.b;
-            a1 = px11.a;
-        } else {
-            int ddx = dx ^ 0xFF;
+        //if (dx < 16) {
+        //    r0 = px00.r;
+        //    g0 = px00.g;
+        //    b0 = px00.b;
+        //    a0 = px00.a;
+        //    r1 = px10.r;
+        //    g1 = px10.g;
+        //    b1 = px10.b;
+        //    a1 = px10.a;
+        //} else if (dx >= 256 - 16) {
+        //    r0 = px01.r;
+        //    g0 = px01.g;
+        //    b0 = px01.b;
+        //    a0 = px01.a;
+        //    r1 = px11.r;
+        //    g1 = px11.g;
+        //    b1 = px11.b;
+        //    a1 = px11.a;
+        //} else {
+            int ddx = 256 - dx;
             r0 = ((px00.r * ddx + px01.r * dx) >> 8);
             g0 = ((px00.g * ddx + px01.g * dx) >> 8);
             b0 = ((px00.b * ddx + px01.b * dx) >> 8);
@@ -321,20 +321,20 @@ class TextureLayer {
             g1 = ((px10.g * ddx + px11.g * dx) >> 8);
             b1 = ((px10.b * ddx + px11.b * dx) >> 8);
             a1 = ((px10.a * ddx + px11.a * dx) >> 8);
-        }
+//        }
         // result rgba must be in r0,g0,b0,a0
-        if (dy < 16) {
-            // do nothing, use r0,g0,b0,a0 as is
-            return Pixel(r0, g0, b0, a0);
-        }  else if (dy >= 256 - 16) {
-            return Pixel(r1, g1, b1, a1);
-        } else {
-            int ddy = dy ^ 0xFF;
+        //if (dy < 16) {
+        //    // do nothing, use r0,g0,b0,a0 as is
+        //    return Pixel(r0, g0, b0, a0);
+        //}  else if (dy >= 256 - 16) {
+        //    return Pixel(r1, g1, b1, a1);
+        //} else {
+            int ddy = 256 - dy;
             return Pixel(((r0 * ddy + r1 * dy) >> 8),
                          ((g0 * ddy + g1 * dy) >> 8),
                          ((b0 * ddy + b1 * dy) >> 8),
                          ((a0 * ddy + a1 * dy) >> 8));
-        }
+        //}
     }
     void getStripeRepeatedInterpolated(Pixel * buf, int x, int y, int dx, int dy, int length) {
         assert(length < 1024);
@@ -384,7 +384,7 @@ class Texture : TextureLayer {
     /// wrapping: when true - clamped, false - repeated
     bool clamp = false;
     /// interpolation: when true - linear interpolation, false - take nearest
-    bool interpolation = false;
+    bool interpolation = true;
 
     this(int sizexLog2, int sizeyLog2) {
         super(sizexLog2, sizeyLog2);
@@ -393,7 +393,7 @@ class Texture : TextureLayer {
     this(string resourceId, int mipmaps = 0) {
         super(2,2);
         loadFromResource(resourceId);
-        filter();
+        //filter();
         generateMipMaps(mipmaps);
     }
 
