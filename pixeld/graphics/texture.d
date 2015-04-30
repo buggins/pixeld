@@ -1,26 +1,33 @@
 module pixeld.graphics.texture;
 
 import pixeld.graphics.types;
+import dlangui.graphics.resources;
+import dlangui.graphics.drawbuf;
 
 class TextureLayer {
-    int _size;
-    int _sizeLog2;
-    uint _mask;
-    uint _shift;
-    uint _shift256;
+    int _sizex;
+    int _sizey;
+    int _sizexLog2;
+    int _sizeyLog2;
+    uint _maskx;
+    uint _masky;
+    uint _shiftx;
+    uint _shifty;
+    uint _shiftx256;
+    uint _shifty256;
 
     Pixel[] _buf;
 
     /// empty layer
-    this(int sizeLog2) {
-        init(sizeLog2);
+    this(int sizexLog2, int sizeyLog2) {
+        init(sizexLog2, sizeyLog2);
     }
 
     /// create layer with next mipmap level (size = upperLayer.size / 2)
     this(TextureLayer upperLayer) {
-        init(upperLayer._size / 2);
-        for (int y = 0; y < _size; y++) {
-            for (int x = 0; x < _size; x++) {
+        init(upperLayer._sizexLog2 - 1, upperLayer._sizeyLog2 - 1);
+        for (int y = 0; y < _sizey; y++) {
+            for (int x = 0; x < _sizex; x++) {
                 Pixel px00 = upperLayer.getPixelClamp(x*2, y*2);
                 Pixel px01 = upperLayer.getPixelClamp(x*2 + 1, y*2);
                 Pixel px10 = upperLayer.getPixelClamp(x*2, y*2 + 1);
@@ -45,22 +52,61 @@ class TextureLayer {
     }
 
     /// size is 8 for 256x256, 7 for 128x128, 6 for 64x64
-    void init(int sizeLog2) {
-        assert(sizeLog2 <= 9 && sizeLog2 >= 2);
-        _sizeLog2 = sizeLog2;
-        _size = 1 << sizeLog2;
-        _mask = _size - 1;
-        _shift = 16 - sizeLog2;
-        _shift256 = 8 - sizeLog2;
-        _buf = new Pixel[_size * _size];
+    void init(int sizexLog2, int sizeyLog2) {
+        assert(sizexLog2 <= 9 && sizexLog2 >= 2);
+        assert(sizeyLog2 <= 9 && sizeyLog2 >= 2);
+        _sizexLog2 = sizexLog2;
+        _sizeyLog2 = sizeyLog2;
+        _sizex = 1 << sizexLog2;
+        _sizey = 1 << sizeyLog2;
+        _maskx = _sizex - 1;
+        _masky = _sizey - 1;
+        _shiftx = 16 - sizexLog2;
+        _shifty = 16 - sizeyLog2;
+        _shiftx256 = 8 - sizexLog2;
+        _shifty256 = 8 - sizeyLog2;
+        _buf = new Pixel[_sizex * _sizey];
     }
 
-    /// if value < 0, set it to 9, if > 255 set to 255
-    void clampSize(ref int n) {
+    bool loadFromResource(string resname) {
+        DrawBufRef res = _drawableCache.getImage(resname);
+        if (res.isNull)
+            return false;
+        if (res.width > 256 || res.height > 256) // texture too big
+            return false;
+        ColorDrawBuf drawbuf = cast(ColorDrawBuf)res.get;
+        if (!drawbuf)
+            return false; // not a color draw buf
+        int xlog2 = 2;
+        int ylog2 = 2;
+        while (1 << xlog2 < drawbuf.width)
+            xlog2++;
+        while (1 << ylog2 < drawbuf.height)
+            ylog2++;
+        init(xlog2, ylog2);
+        for (int y = 0; y < drawbuf.height; y++) {
+            uint * srcline = drawbuf.scanLine(y);
+            Pixel * dstline = _buf.ptr + (y << _sizexLog2);
+            for (int x = 0; x < drawbuf.width; x++)
+                dstline[x].pixel = srcline[x];
+        }
+        return true;
+    }
+
+    /// if value < 0, set it to 0, if >= _sizex set to _sizex - 1
+    void clampSizeX(ref int n) {
         if (n < 0)
             n = 0;
-        else if (n >= _size)
-            n = _size - 1;
+        else if (n >= _sizex)
+            n = _sizex - 1;
+    }
+
+    /// if value < 0, set it to 0, if >= sizey set to sizey - 1
+    void clampSizeY(ref int n) {
+        if (n < 0)
+            n = 0;
+        else if (n >= _sizey)
+            n = _sizey - 1;
     }
 
     Pixel peekGaussAvg(int x, int y) {
@@ -92,24 +138,24 @@ class TextureLayer {
     private static __gshared Pixel[0x10000] _filterBuffer;
     /// gaussian filter
     void filter() {
-        for (int y = 0; y < _size; y++) {
-            for (int x = 0; x < _size; x++) {
-                _filterBuffer[(y << _sizeLog2) + x] = peekGaussAvg(x, y);
+        for (int y = 0; y < _sizey; y++) {
+            for (int x = 0; x < _sizex; x++) {
+                _filterBuffer[(y << _sizexLog2) + x] = peekGaussAvg(x, y);
             }
         }
-        for (int i = _size * _size - 1; i >= 0; i--)
+        for (int i = _sizex * _sizey - 1; i >= 0; i--)
             _buf[i] = _filterBuffer[i];
     }
 
     void fillRect(int x0, int y0, int x1, int y1, Pixel color) {
-        clampSize(x0);
-        clampSize(y0);
-        clampSize(x1);
-        clampSize(y1);
+        clampSizeX(x0);
+        clampSizeY(y0);
+        clampSizeX(x1);
+        clampSizeY(y1);
         if (x0 >= x1 || y0 >= y1)
             return;
         for(int y = y0; y < y1; y++) {
-            Pixel * row = _buf.ptr + (y << _sizeLog2);
+            Pixel * row = _buf.ptr + (y << _sizexLog2);
             for (int x = x0; x < x1; x++)
                 row[x] = color;
         }
@@ -117,75 +163,75 @@ class TextureLayer {
 
     /// set pixel with coords _size * _size (coords outside bounds are ignored)
     void putPixel(int x, int y, Pixel px) {
-        if (x < 0 || y < 0 || x >= _size || y >= _size)
+        if (x < 0 || y < 0 || x >= _sizex || y >= _sizey)
             return;
-        _buf.ptr[(y << _sizeLog2) + x] = px;        
+        _buf.ptr[(y << _sizexLog2) + x] = px;
     }
 
     /// set pixel with coords _size * _size (coords outside bounds are clamped)
     void putPixelClamp(int x, int y, Pixel px) {
         if (x < 0)
             x = 0;
-        else if (x >= _size)
-            x = _size - 1;
+        else if (x >= _sizex)
+            x = _sizex - 1;
         if (y < 0)
             y = 0;
-        else if (y >= _size)
-            y = _size - 1;
-        _buf.ptr[(y << _sizeLog2) + x] = px;
+        else if (y >= _sizey)
+            y = _sizey - 1;
+        _buf.ptr[(y << _sizexLog2) + x] = px;
     }
 
     /// set pixel with coords _size * _size (coords outside bounds are repeated)
     void putPixelRepeat(int x, int y, Pixel px) {
-        _buf.ptr[((y & _mask) << _sizeLog2) + (x & _mask)] = px;
+        _buf.ptr[((y & _masky) << _sizexLog2) + (x & _maskx)] = px;
     }
 
     /// set pixel with coords _size * _size (coords outside bounds are repeated)
     Pixel getPixelRepeat(int x, int y) {
-        return _buf.ptr[((y & _mask) << _sizeLog2) + (x & _mask)];
+        return _buf.ptr[((y & _masky) << _sizexLog2) + (x & _maskx)];
     }
 
     /// set pixel with coords _size * _size (coords outside bounds are clamped)
     Pixel getPixelClamp(int x, int y) {
         if (x < 0)
             x = 0;
-        else if (x >= _size)
-            x = _size - 1;
+        else if (x >= _sizex)
+            x = _sizex - 1;
         if (y < 0)
             y = 0;
-        else if (y >= _size)
-            y = _size - 1;
-        return _buf[(y << _sizeLog2) + x];
+        else if (y >= _sizey)
+            y = _sizey - 1;
+        return _buf[(y << _sizexLog2) + x];
     }
 
     /// get pixel in tex coords are in 0..0x10000, no interpolation, repeat
     Pixel getRepeated(int x, int y) {
         // xx, yy: integer part, 0.._size-1
-        int xx = (x >> _shift) & _mask;
-        int yy = (y >> _shift) & _mask;
-        return _buf[(yy << _sizeLog2) + ((xx + 1) & _mask)];
+        int xx = (x >> _shiftx) & _maskx;
+        int yy = (y >> _shifty) & _masky;
+        return _buf[(yy << _sizexLog2) + ((xx + 1) & _maskx)];
     }
 
     /// get pixel in tex coords are in 0..0x10000, no interpolation, clamp
     Pixel getClamped(int x, int y) {
         // xx, yy: integer part, 0.._size-1
-        int xx = (x >> _shift) & _mask;
-        int yy = (y >> _shift) & _mask;
-        return _buf[(yy << _sizeLog2) + ((xx + 1) & _mask)];
+        int xx = (x >> _shiftx) & _maskx;
+        int yy = (y >> _shifty) & _masky;
+        return _buf[(yy << _sizexLog2) + ((xx + 1) & _maskx)];
     }
 
     /// get pixel in tex coords are in 0..0x10000, linear interpolation, clamp
     Pixel getClampedInterpolated(int x, int y) {
         // xx, yy: integer part, 0.._size-1
-        int xx = (x >> _shift);
-        int yy = (y >> _shift);
+        int xx = (x >> _shiftx);
+        int yy = (y >> _shifty);
         // dx, dy: fractional part, 0..255
-        int dx = (x >> _shift256) & 0xFF;
-        int dy = (y >> _shift256) & 0xFF;
-        Pixel px00 = _buf[(yy << _sizeLog2) + ((xx + 1) & _mask)];
-        Pixel px01 = _buf[(((yy + 1) & _mask) << _sizeLog2) + xx];
-        Pixel px10 = _buf[(yy << _sizeLog2) + ((xx + 1) & _mask)];
-        Pixel px11 = _buf[(((yy + 1) & _mask) << _sizeLog2) + xx];
+        int dx = (x >> _shiftx256) & 0xFF;
+        int dy = (y >> _shifty256) & 0xFF;
+        Pixel px00 = _buf[(yy << _sizexLog2) + xx];
+        Pixel px01 = _buf[(yy << _sizexLog2) + ((xx + 1) & _maskx)];
+        Pixel px10 = _buf[(((yy + 1) & _masky) << _sizexLog2) + xx];
+        Pixel px11 = _buf[(((yy + 1) & _masky) << _sizexLog2) + ((xx + 1) & _maskx)];
         int r0, g0, b0, a0, r1, g1, b1, a1;
         if (dx < 16) {
             r0 = px00.r;
@@ -234,11 +280,11 @@ class TextureLayer {
     /// get pixel in tex coords are in 0..0x10000, linear interpolation, repeat
     Pixel getRepeatedInterpolated(int x, int y) {
         // xx, yy: integer part, 0.._size-1
-        int xx = (x >> _shift) & _mask;
-        int yy = (y >> _shift) & _mask;
+        int xx = (x >> _shiftx) & _maskx;
+        int yy = (y >> _shifty) & _masky;
         // dx, dy: fractional part, 0..255
-        int dx = (x >> _shift256) & 0xFF;
-        int dy = (y >> _shift256) & 0xFF;
+        int dx = (x >> _shiftx256) & 0xFF;
+        int dy = (y >> _shifty256) & 0xFF;
         Pixel px00 = getPixelClamp(xx, yy);
         Pixel px01 = getPixelClamp(xx + 1, yy);
         Pixel px10 = getPixelClamp(xx, yy + 1);
@@ -337,9 +383,15 @@ class Texture : TextureLayer {
     /// interpolation: when true - linear interpolation, false - take nearest
     bool interpolation = true;
 
-    this(int sizeLog2) {
-        super(sizeLog2);
+    this(int sizexLog2, int sizeyLog2) {
+        super(sizexLog2, sizeyLog2);
     }
+
+    this(string resourceId) {
+        super(2,2);
+        loadFromResource(resourceId);
+    }
+
     ~this() {
         clearMipMaps();
     }
@@ -350,11 +402,12 @@ class Texture : TextureLayer {
         }
         _mipMap.length = 0;
     }
+
     void generateMipMaps(int count) {
         clearMipMaps();
         TextureLayer currentLayer = this;
         for (int i = 0; i < count; i++) {
-            if (currentLayer._sizeLog2 <= 3)
+            if (currentLayer._sizexLog2 < 3 || currentLayer._sizeyLog2 < 3)
                 break; // too dip
             TextureLayer nextLayer = new TextureLayer(currentLayer);
             _mipMap ~= nextLayer;

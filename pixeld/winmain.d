@@ -9,6 +9,18 @@ import pixeld.graphics.pixelwidget;
 
 /// entry point for dlangui based application
 extern (C) int UIAppMain(string[] args) {
+
+    // resource directory search paths
+    string[] resourceDirs = [
+        appendPath(exePath, "../../../views/textures/"),
+        appendPath(exePath, "../../views/textures/"),
+        appendPath(exePath, "../views/textures/"),
+        appendPath(exePath, "views/textures/"),
+        appendPath(exePath, "textures/"),
+    ];
+    // setup resource directories - will use only existing directories
+    Platform.instance.resourceDirs = resourceDirs;
+
     // create window
     Window window = Platform.instance.createWindow("DlangUI example - HelloWorld", null, 700, 500);
 

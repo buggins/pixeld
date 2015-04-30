@@ -14,7 +14,7 @@ import pixeld.graphics.framebuf;
 
 
 Texture createWallTexture() {
-    Texture t = new Texture(8);
+    Texture t = new Texture(8, 8);
     t.fillWith(0x802020);
     Pixel cl2 = Pixel(0x706020);
     int off = 16;
@@ -31,7 +31,7 @@ Texture createWallTexture() {
 }
 
 Texture createFloorTexture() {
-    Texture t = new Texture(8);
+    Texture t = new Texture(8, 8);
     t.fillWith(0x504020);
     Pixel cl2 = Pixel(0x706020);
     int c3 = 256 / 3;
@@ -61,8 +61,8 @@ class PixelWidget : Widget {
 
         focusable = true;
 
-        _wallTexture = createWallTexture();
-        _floorTexture = createFloorTexture();
+        _wallTexture = new Texture("stone_wall_2"); // createWallTexture();
+        _floorTexture = new Texture("stone_wall_1"); // createFloorTexture();
 
         initFramebuffer(256 * 2, 192 * 2, 1);
 
@@ -71,8 +71,6 @@ class PixelWidget : Widget {
         //_framebuf.translationX = 64;
 
         drawScene();
-
-
 
     }
 
@@ -142,27 +140,33 @@ class PixelWidget : Widget {
         x *= 256;
         y *= 256;
         const int n = 256 / 6;
-        // floor bounds
-        _framebuf.line3d(point3d(x-128, y - 128, 0), point3d(x+128, y - 128, 0), cl);
-        _framebuf.line3d(point3d(x-128, y - 128, 0), point3d(x-128, y + 128, 0), cl);
-        _framebuf.line3d(point3d(x+128, y - 128, 0), point3d(x+128, y + 128, 0), cl);
-        _framebuf.line3d(point3d(x-128, y + 128, 0), point3d(x+128, y + 128, 0), cl);
-        // floor cells
-        _framebuf.line3d(point3d(x-128, y - 128 + 2*n, 0), point3d(x+128, y - 128 + 2*n, 0), cl);
-        _framebuf.line3d(point3d(x-128 + 2*n, y - 128, 0), point3d(x-128 + 2*n, y + 128, 0), cl);
-        _framebuf.line3d(point3d(x+128 - 2*n, y - 128, 0), point3d(x+128 - 2*n, y + 128, 0), cl);
-        _framebuf.line3d(point3d(x-128, y + 128 - 2*n, 0), point3d(x+128, y + 128 - 2*n, 0), cl);
-        // ceil bounds
-        _framebuf.line3d(point3d(x-128, y - 128, 192), point3d(x+128, y - 128, 192), cl);
-        _framebuf.line3d(point3d(x-128, y - 128, 192), point3d(x-128, y + 128, 192), cl);
-        _framebuf.line3d(point3d(x+128, y - 128, 192), point3d(x+128, y + 128, 192), cl);
-        _framebuf.line3d(point3d(x-128, y + 128, 192), point3d(x+128, y + 128, 192), cl);
-        // wall
-        _framebuf.line3d(point3d(x-128, y + 128, 0), point3d(x-128, y + 128, 192), cl);
-        _framebuf.line3d(point3d(x+128, y + 128, 0), point3d(x+128, y + 128, 192), cl);
+        version (Wireframe) {
+            // floor bounds
+            _framebuf.line3d(point3d(x-128, y - 128, 0), point3d(x+128, y - 128, 0), cl);
+            _framebuf.line3d(point3d(x-128, y - 128, 0), point3d(x-128, y + 128, 0), cl);
+            _framebuf.line3d(point3d(x+128, y - 128, 0), point3d(x+128, y + 128, 0), cl);
+            _framebuf.line3d(point3d(x-128, y + 128, 0), point3d(x+128, y + 128, 0), cl);
+            // floor cells
+            _framebuf.line3d(point3d(x-128, y - 128 + 2*n, 0), point3d(x+128, y - 128 + 2*n, 0), cl);
+            _framebuf.line3d(point3d(x-128 + 2*n, y - 128, 0), point3d(x-128 + 2*n, y + 128, 0), cl);
+            _framebuf.line3d(point3d(x+128 - 2*n, y - 128, 0), point3d(x+128 - 2*n, y + 128, 0), cl);
+            _framebuf.line3d(point3d(x-128, y + 128 - 2*n, 0), point3d(x+128, y + 128 - 2*n, 0), cl);
+        }
+        version (Wireframe) {
+            // ceil bounds
+            _framebuf.line3d(point3d(x-128, y - 128, 192), point3d(x+128, y - 128, 192), cl);
+            _framebuf.line3d(point3d(x-128, y - 128, 192), point3d(x-128, y + 128, 192), cl);
+            _framebuf.line3d(point3d(x+128, y - 128, 192), point3d(x+128, y + 128, 192), cl);
+            _framebuf.line3d(point3d(x-128, y + 128, 192), point3d(x+128, y + 128, 192), cl);
+        }
+        version (Wireframe) {
+            // wall
+            _framebuf.line3d(point3d(x-128, y + 128, 0), point3d(x-128, y + 128, 192), cl);
+            _framebuf.line3d(point3d(x+128, y + 128, 0), point3d(x+128, y + 128, 192), cl);
+        }
 
         _framebuf.drawTexture(_wallTexture, point3d(x-128, y - 128, 0), point3d(x-128, y - 128, 192), point3d(x-128, y + 128, 192), point3d(x-128, y + 128, 0),
-                              point2d(0, 0), point2d(0, 0xFFFF), point2d(0xFFFF, 0xFFFF), point2d(0xFFFF, 0));
+                              point2d(0, 0), point2d(0, 0xBFFF), point2d(0xFFFF, 0xBFFF), point2d(0xFFFF, 0));
         _framebuf.drawTexture(_floorTexture, point3d(x-128, y - 128, 0), point3d(x-128, y + 128, 0), point3d(x+128, y + 128, 0), point3d(x+128, y - 128, 0),
                               point2d(0, 0), point2d(0, 0xFFFF), point2d(0xFFFF, 0xFFFF), point2d(0xFFFF, 0));
     }
