@@ -334,17 +334,17 @@ class FrameBuffer : ColorDrawBuf {
             int lasty = -1;
             for (int i = 0; i < maxdist; i += step) {
                 point3d p1; // left
-                p1.x = cast(int)(pt1.x + cast(long)dx1 * i / maxdist);
-                p1.y = cast(int)(pt1.y + cast(long)dy1 * i / maxdist);
-                p1.z = cast(int)(pt1.z + cast(long)dz1 * i / maxdist);
+                p1.x = cast(int)(pt1.x + dx1 * i / maxdist);
+                p1.y = cast(int)(pt1.y + dy1 * i / maxdist);
+                p1.z = cast(int)(pt1.z + dz1 * i / maxdist);
 
                 if (p1.y < -HALF_CELL_SIZE || p1.y >= DEEP_TABLE_LEN) // Z plane clipping
                     continue; // y out of range
 
                 point3d p2; // right
-                p2.x = cast(int)(pt4.x + cast(long)dx2 * i / maxdist);
-                p2.y = cast(int)(pt4.y + cast(long)dy2 * i / maxdist);
-                p2.z = cast(int)(pt4.z + cast(long)dz2 * i / maxdist);
+                p2.x = cast(int)(pt4.x + dx2 * i / maxdist);
+                p2.y = cast(int)(pt4.y + dy2 * i / maxdist);
+                p2.z = cast(int)(pt4.z + dz2 * i / maxdist);
 
                 point3d pp1 = mapCoordsNoCheck(p1);
                 point3d pp2 = mapCoordsNoCheck(p2);
@@ -360,11 +360,11 @@ class FrameBuffer : ColorDrawBuf {
                     continue;
 
                 point2d t1; // left texture coord
-                t1.x = cast(int)(tx1.x + cast(long)dtx1 * i / maxdist);
-                t1.y = cast(int)(tx1.y + cast(long)dty1 * i / maxdist);
+                t1.x = cast(int)(tx1.x + dtx1 * i / maxdist);
+                t1.y = cast(int)(tx1.y + dty1 * i / maxdist);
                 point2d t2; // right texture coord
-                t2.x = cast(int)(tx4.x + cast(long)dtx2 * i / maxdist);
-                t2.y = cast(int)(tx4.y + cast(long)dty2 * i / maxdist);
+                t2.x = cast(int)(tx4.x + dtx2 * i / maxdist);
+                t2.y = cast(int)(tx4.y + dty2 * i / maxdist);
 
                 stripeLen = abs(pp1.x - pp2.x);
                 if (stripeLen < 1)
