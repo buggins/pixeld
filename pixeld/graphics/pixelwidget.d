@@ -61,10 +61,14 @@ class PixelWidget : Widget {
 
         focusable = true;
 
-        _wallTexture = new Texture("stone_wall_2"); // createWallTexture();
-        _floorTexture = new Texture("stone_wall_1"); // createFloorTexture();
+        _wallTexture = new Texture("stone_wall_4", 3); // createWallTexture();
+        _floorTexture = new Texture("stone_wall_1", 3); // createFloorTexture();
 
-        initFramebuffer(256 * 2, 192 * 2, 1);
+
+        static if (true)
+            initFramebuffer(256, 192, 2);
+        else
+            initFramebuffer(256 * 2, 192 * 2, 1);
 
 
         //_framebuf.translationY = 64;
@@ -166,9 +170,9 @@ class PixelWidget : Widget {
         }
 
         _framebuf.drawTexture(_wallTexture, point3d(x-128, y - 128, 0), point3d(x-128, y - 128, 192), point3d(x-128, y + 128, 192), point3d(x-128, y + 128, 0),
-                              point2d(0, 0), point2d(0, 0xBFFF), point2d(0xFFFF, 0xBFFF), point2d(0xFFFF, 0));
+                              point2d(0, 0), point2d(0, 0xC000), point2d(0x10000, 0xC000), point2d(0x10000, 0));
         _framebuf.drawTexture(_floorTexture, point3d(x-128, y - 128, 0), point3d(x-128, y + 128, 0), point3d(x+128, y + 128, 0), point3d(x+128, y - 128, 0),
-                              point2d(0, 0), point2d(0, 0xFFFF), point2d(0xFFFF, 0xFFFF), point2d(0xFFFF, 0));
+                              point2d(0, 0), point2d(0, 0x10000), point2d(0x10000, 0x10000), point2d(0x10000, 0));
     }
 
     void initFramebuffer(int dx, int dy, int scale) {
@@ -249,7 +253,7 @@ class PixelWidget : Widget {
         if (elapsed >= 1000000) {
             elapsed -= 1000000;
             //_framebuf.rotationAngle += 2;
-            //_framebuf.translationY += 1;
+            _framebuf.translationY += 1;
         }
         //_framebuf.translationY += 1;
         //_framebuf.translationX += 1;

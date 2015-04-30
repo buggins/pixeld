@@ -4,6 +4,9 @@ import pixeld.graphics.types;
 import dlangui.graphics.resources;
 import dlangui.graphics.drawbuf;
 
+import std.algorithm : min, max;
+import std.math : abs;
+
 class TextureLayer {
     int _sizex;
     int _sizey;
@@ -36,7 +39,7 @@ class TextureLayer {
                 int g = cast(int)px00.g + px01.g + px10.g + px11.g;
                 int b = cast(int)px00.b + px01.b + px10.b + px11.b;
                 int a = cast(int)px00.a + px01.a + px10.a + px11.a;
-                putPixel(x, y, Pixel(r, g, b, a));
+                putPixel(x, y, Pixel(r >> 2, g >> 2, b >> 2, a >> 2));
             }
         }
     }
@@ -381,15 +384,17 @@ class Texture : TextureLayer {
     /// wrapping: when true - clamped, false - repeated
     bool clamp = false;
     /// interpolation: when true - linear interpolation, false - take nearest
-    bool interpolation = true;
+    bool interpolation = false;
 
     this(int sizexLog2, int sizeyLog2) {
         super(sizexLog2, sizeyLog2);
     }
 
-    this(string resourceId) {
+    this(string resourceId, int mipmaps = 0) {
         super(2,2);
         loadFromResource(resourceId);
+        filter();
+        generateMipMaps(mipmaps);
     }
 
     ~this() {
@@ -420,6 +425,27 @@ class Texture : TextureLayer {
     void getStripe(Pixel * buf, int x, int y, int dx, int dy, int length) {
         TextureLayer layer = this;
         if (_mipMap.length > 0) {
+            int stepx = abs(dx);
+            int stepy = abs(dy);
+            if (stepx < 64*256)
+                stepx = 64*256;
+            if (stepy < 64*256)
+                stepy = 64*256;
+            int xsteps = 0x1000000 / stepx;
+            int ysteps = 0x1000000 / stepy;
+            int xpixelbystep = _sizex / xsteps;
+            int ypixelbystep = _sizey / ysteps;
+            int pixelbystep = max(xpixelbystep, ypixelbystep);
+            int level = 0;
+            while (pixelbystep > 1) {
+                pixelbystep /= 2;
+                level++;
+            }
+            if (level > _mipMap.length)
+                level = cast(int)_mipMap.length;
+            if (level > 0)
+                layer = _mipMap[level - 1];
+
             // TODO: mipmap support
             // select suitable mipmap layer
         }
