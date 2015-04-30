@@ -60,6 +60,19 @@ class FrameBuffer : ColorDrawBuf {
         //rotationAngle = 45;
     }
 
+    // returns direction vector of length 1, for 0/90/180/270 degrees angles
+    @property point2d directionVector() {
+        if (_rotationAngle == 0)
+            return point2d(0, 1);
+        else if (_rotationAngle == 90)
+            return point2d(1, 0);
+        else if (_rotationAngle == 180)
+            return point2d(0, -1);
+        else if (_rotationAngle == 270)
+            return point2d(-1, 0);
+        return point2d(0, 0);
+    }
+
     void clearBackground(uint cl) {
         for(int i = cast(int)_buf.length - 1; i >= 0; i--)
             _buf.ptr[i] = cl;
@@ -153,6 +166,8 @@ class FrameBuffer : ColorDrawBuf {
         if (step <= 0)
             step = 1;
 
+        int stripeLen = 1;
+
         if (pt1.x == pt2.x && pt1.y == pt2.y && pt3.x == pt4.x && pt3.y == pt4.y) {
             // vertical (wall)
 
@@ -222,11 +237,30 @@ class FrameBuffer : ColorDrawBuf {
                     continue;
                 if (pp1.x == lastx)
                     continue;
-                lastx = pp1.x;
                 if (pp1.y < 0 && pp2.y < 0) // below
                     continue;
                 if (pp1.y >= _dy && pp2.y >= _dy) // above
                     continue;
+                if (lastx != -1 && (pp1.x > lastx + 1 || pp1.x < lastx - 1)) {
+                    int x0 = lastx;
+                    int x1 = pp1.x;
+                    if (x0 > x1)
+                        swap(x0, x1);
+
+                    // fill hole: draw with the same stripe
+                    int dy = pp1.y < pp2.y ? 1 : -1;
+                    for (int x = x0 + 1; x < x1; x++) {
+                        int idx = 0;
+                        point3d p = pp1;
+                        p.x = x;
+                        for (int y = pp1.y; idx < stripeLen; idx++, y += dy) {
+                            p.y = y;
+                            if (y >= 0 && y < _dy)
+                                pixel2d(p, textureStripeBuffer.ptr[idx].pixel);
+                        }
+                    }
+                }
+                lastx = pp1.x;
 
                 point2d t1; // bottom texture coord
                 t1.x = cast(int)(tx1.x + cast(long)dtx1 * i / maxdist);
@@ -235,7 +269,7 @@ class FrameBuffer : ColorDrawBuf {
                 t2.x = cast(int)(tx2.x + cast(long)dtx2 * i / maxdist);
                 t2.y = cast(int)(tx2.y + cast(long)dty2 * i / maxdist);
 
-                int stripeLen = abs(pp1.y - pp2.y);
+                stripeLen = abs(pp1.y - pp2.y);
                 if (stripeLen < 1)
                     stripeLen = 1;
 
@@ -315,7 +349,7 @@ class FrameBuffer : ColorDrawBuf {
                 point3d pp1 = mapCoordsNoCheck(p1);
                 point3d pp2 = mapCoordsNoCheck(p2);
 
-                if (pp1.x < 0 || pp1.x >= _dx) // left or right
+                if ((pp1.x < 0 && pp2.x < 0) || (pp2.x >= _dx && pp2.x >= _dx)) // left or right
                     continue;
                 if (pp1.y == lasty)
                     continue;
@@ -332,7 +366,7 @@ class FrameBuffer : ColorDrawBuf {
                 t2.x = cast(int)(tx4.x + cast(long)dtx2 * i / maxdist);
                 t2.y = cast(int)(tx4.y + cast(long)dty2 * i / maxdist);
 
-                int stripeLen = abs(pp1.x - pp2.x);
+                stripeLen = abs(pp1.x - pp2.x);
                 if (stripeLen < 1)
                     stripeLen = 1;
 

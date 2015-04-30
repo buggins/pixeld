@@ -65,6 +65,11 @@ class PixelWidget : Widget {
         _floorTexture = createFloorTexture();
 
         initFramebuffer(256 * 2, 192 * 2, 1);
+
+
+        //_framebuf.translationY = 64;
+        //_framebuf.translationX = 64;
+
         drawScene();
 
 
@@ -115,22 +120,22 @@ class PixelWidget : Widget {
         //_framebuf.line3d(point3d(128, 512, 0), point3d(128, 768, 0), 0xE08080);
 
         drawCell(0, 0, 0xFF0000);
-        //drawCell(0, 1, 0xFFFF00);
-        //drawCell(0, 2, 0x80FFFF);
-        //drawCell(-1, 2, 0x8080FF);
-        //drawCell(-2, 2, 0x8080FF);
-        //drawCell(+1, 2, 0x8080FF);
-        //drawCell(0, 3, 0x80FFFF);
-        //drawCell(-1, 3, 0xFF80FF);
-        //drawCell(+1, 3, 0xFFC0FF);
-        //drawCell(-2, 3, 0xFFC0FF);
-        //drawCell(+2, 3, 0xFFC0FF);
-        //drawCell(-3, 3, 0xFFC0FF);
-        //drawCell(+3, 3, 0xFFC0FF);
-        //drawCell(0, 4, 0x80FFFF);
-        //drawCell(0, 5, 0x80FFFF);
-        //drawCell(0, 6, 0x80FFFF);
-        //drawCell(0, 7, 0x80FFFF);
+        drawCell(0, 1, 0xFFFF00);
+        drawCell(0, 2, 0x80FFFF);
+        drawCell(-1, 2, 0x8080FF);
+        drawCell(-2, 2, 0x8080FF);
+        drawCell(+1, 2, 0x8080FF);
+        drawCell(0, 3, 0x80FFFF);
+        drawCell(-1, 3, 0xFF80FF);
+        drawCell(+1, 3, 0xFFC0FF);
+        drawCell(-2, 3, 0xFFC0FF);
+        drawCell(+2, 3, 0xFFC0FF);
+        drawCell(-3, 3, 0xFFC0FF);
+        drawCell(+3, 3, 0xFFC0FF);
+        drawCell(0, 4, 0x80FFFF);
+        drawCell(0, 5, 0x80FFFF);
+        drawCell(0, 6, 0x80FFFF);
+        drawCell(0, 7, 0x80FFFF);
     }
 
     void drawCell(int x, int y, uint cl) {
@@ -257,12 +262,15 @@ class PixelWidget : Widget {
                 _framebuf.rotationAngle = _framebuf.rotationAngle + 90;
                 return true;
             }
+            auto dir = _framebuf.directionVector;
             if (event.keyCode == KeyCode.UP) {
-                _framebuf.translationY += 256;
+                _framebuf.translationX += dir.x * 256;
+                _framebuf.translationY += dir.y * 256;
                 return true;
             }
             if (event.keyCode == KeyCode.DOWN) {
-                _framebuf.translationY -= 256;
+                _framebuf.translationX -= dir.x * 256;
+                _framebuf.translationY -= dir.y * 256;
                 return true;
             }
         }
