@@ -125,27 +125,21 @@ class FrameBuffer : ColorDrawBuf {
         translateCoords(pt4);
 
         if (pt1.y + HALF_CELL_SIZE < 0 && pt2.y + HALF_CELL_SIZE < 0 && pt3.y + HALF_CELL_SIZE < 0 && pt4.y + HALF_CELL_SIZE < 0) {
-            Log.d("clip");
             return;
         }
         if (pt1.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt2.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt3.y + HALF_CELL_SIZE > DEEP_TABLE_LEN && pt4.y + HALF_CELL_SIZE > DEEP_TABLE_LEN) {
-            Log.d("clip");
             return;
         }
         if (pt1.x < -DEEP_TABLE_LEN && pt2.x < -DEEP_TABLE_LEN && pt3.x < -DEEP_TABLE_LEN && pt4.x < -DEEP_TABLE_LEN) {
-            Log.d("clip");
             return;
         }
         if (pt1.x > DEEP_TABLE_LEN && pt2.x > DEEP_TABLE_LEN && pt3.x > DEEP_TABLE_LEN && pt4.x > DEEP_TABLE_LEN) {
-            Log.d("clip");
             return;
         }
         if (pt1.z < -DEEP_TABLE_LEN && pt2.z < -DEEP_TABLE_LEN && pt3.z < -DEEP_TABLE_LEN && pt4.z < -DEEP_TABLE_LEN) {
-            Log.d("clip");
             return;
         }
         if (pt1.z > DEEP_TABLE_LEN && pt2.z > DEEP_TABLE_LEN && pt3.z > DEEP_TABLE_LEN && pt4.z > DEEP_TABLE_LEN) {
-            Log.d("clip");
             return;
         }
 
@@ -160,7 +154,9 @@ class FrameBuffer : ColorDrawBuf {
             step = 1;
 
         if (pt1.x == pt2.x && pt1.y == pt2.y && pt3.x == pt4.x && pt3.y == pt4.y) {
+            // vertical (wall)
 
+            // pt1 must be near
             if (pt1.y > pt4.y) {
                 // swap
                 swap(pt1, pt4);
@@ -169,7 +165,27 @@ class FrameBuffer : ColorDrawBuf {
                 swap(tx2, tx3);
             }
 
-            // vertical (wall)
+
+            /*
+                 2---
+                 |   `---
+                 |       `--3
+                 |          |
+                 |          4
+                 |         /
+                 |        /
+                 |       /
+                 |      /
+                 |     /
+                 |    /
+                 |   /
+                 |  /
+                 | /
+                 |/
+                 1
+            */
+
+
             int dx1 = pt4.x - pt1.x;
             int dy1 = pt4.y - pt1.y;
             int dz1 = pt4.z - pt1.z;
@@ -234,6 +250,107 @@ class FrameBuffer : ColorDrawBuf {
                         pixel2d(p, textureStripeBuffer.ptr[idx].pixel);
                 }
             }
+            return;
+        } else if (pt1.z == pt2.z && pt2.z == pt3.z && pt3.z == pt4.z) {
+            // horizontal surface (floor or ceil)
+
+            if (pt1.y == pt4.y && pt2.y == pt3.y) {
+                // pt1 must be near
+                if (pt1.y > pt4.y) {
+                    // swap - rotate 180 degrees
+                    swap(pt1, pt3);
+                    swap(pt2, pt4);
+                    swap(tx1, tx3);
+                    swap(tx2, tx4);
+                }
+            } else if (pt1.y == pt2.y && pt3.y == pt4.y) {
+                if (pt1.y < pt2.y) {
+                    rotateLeft(pt1, pt2, pt3, pt4);
+                    rotateLeft(tx1, tx2, tx3, tx4);
+                } else {
+                    rotateRight(pt1, pt2, pt3, pt4);
+                    rotateRight(tx1, tx2, tx3, tx4);
+                }
+            } else {
+                Log.d("Drawing of non-rectangular horizontal plane is not supported");
+                return;
+            }
+
+            /*
+                    2 ------ 3
+                   /          \
+                  /            \
+                 1--------------4
+            */
+
+            int dx1 = pt2.x - pt1.x;
+            int dy1 = pt2.y - pt1.y;
+            int dz1 = pt2.z - pt1.z;
+            int dx2 = pt3.x - pt4.x;
+            int dy2 = pt3.y - pt4.y;
+            int dz2 = pt3.z - pt4.z;
+
+            int dtx1 = tx2.x - tx1.x;
+            int dty1 = tx2.y - tx1.y;
+            int dtx2 = tx3.x - tx4.x;
+            int dty2 = tx3.y - tx4.y;
+
+            int maxdist = max(abs(dx1), abs(dy1), abs(dz1), abs(dx2), abs(dy2), abs(dz2));
+
+            int lasty = -1;
+            for (int i = 0; i < maxdist; i += step) {
+                point3d p1; // left
+                p1.x = cast(int)(pt1.x + cast(long)dx1 * i / maxdist);
+                p1.y = cast(int)(pt1.y + cast(long)dy1 * i / maxdist);
+                p1.z = cast(int)(pt1.z + cast(long)dz1 * i / maxdist);
+
+                if (p1.y < -HALF_CELL_SIZE || p1.y >= DEEP_TABLE_LEN) // Z plane clipping
+                    continue; // y out of range
+
+                point3d p2; // right
+                p2.x = cast(int)(pt4.x + cast(long)dx2 * i / maxdist);
+                p2.y = cast(int)(pt4.y + cast(long)dy2 * i / maxdist);
+                p2.z = cast(int)(pt4.z + cast(long)dz2 * i / maxdist);
+
+                point3d pp1 = mapCoordsNoCheck(p1);
+                point3d pp2 = mapCoordsNoCheck(p2);
+
+                if (pp1.x < 0 || pp1.x >= _dx) // left or right
+                    continue;
+                if (pp1.y == lasty)
+                    continue;
+                lasty = pp1.y;
+                if (pp1.y < 0 && pp2.y < 0) // below
+                    continue;
+                if (pp1.y >= _dy && pp2.y >= _dy) // above
+                    continue;
+
+                point2d t1; // left texture coord
+                t1.x = cast(int)(tx1.x + cast(long)dtx1 * i / maxdist);
+                t1.y = cast(int)(tx1.y + cast(long)dty1 * i / maxdist);
+                point2d t2; // right texture coord
+                t2.x = cast(int)(tx4.x + cast(long)dtx2 * i / maxdist);
+                t2.y = cast(int)(tx4.y + cast(long)dty2 * i / maxdist);
+
+                int stripeLen = abs(pp1.x - pp2.x);
+                if (stripeLen < 1)
+                    stripeLen = 1;
+
+                tex.getStripe(textureStripeBuffer.ptr, t1.x, t1.y, 256 * (t2.x - t1.x) / stripeLen, 256 * (t2.y - t1.y) / stripeLen, stripeLen);
+
+                int dx = pp1.x < pp2.x ? 1 : -1;
+                int y = pp1.y;
+                int idx = 0;
+                point3d p = pp1;
+                for (int x = pp1.x; idx < stripeLen; idx++, x += dx) {
+                    p.x = x;
+                    if (x >= 0 && x < _dx)
+                        pixel2d(p, textureStripeBuffer.ptr[idx].pixel);
+                }
+            }
+            return;
+        } else {
+            Log.d("Only drawing of vertical and horizontal surfaces supported now");
         }
     }
 

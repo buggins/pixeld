@@ -40,6 +40,25 @@ void swap(T)(ref T pt1, ref T pt2) {
     pt2 = tmp;
 }
 
+/// rotate 4 values left  (pt1 <= pt2 <= pt3 <= pt4 <= pt1)
+void rotateLeft(T)(ref T pt1, ref T pt2, ref T pt3, ref T pt4) {
+    T tmp = pt1;
+    pt1 = pt2;
+    pt2 = pt3;
+    pt3 = pt4;
+    pt4 = tmp;
+}
+
+/// rotate 4 values left  (pt1 <= pt2 <= pt3 <= pt4 <= pt1)
+void rotateRight(T)(ref T pt1, ref T pt2, ref T pt3, ref T pt4) {
+    T tmp = pt4;
+    pt4 = pt3;
+    pt3 = pt2;
+    pt2 = pt1;
+    pt1 = tmp;
+}
+
+
 struct point2d {
     int x;
     int y;

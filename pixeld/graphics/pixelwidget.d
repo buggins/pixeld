@@ -142,6 +142,8 @@ class PixelWidget : Widget {
 
         _framebuf.drawTexture(_wallTexture, point3d(x-128, y - 128, 0), point3d(x-128, y - 128, 192), point3d(x-128, y + 128, 192), point3d(x-128, y + 128, 0),
                               point2d(0, 0), point2d(0, 0xFFFF), point2d(0xFFFF, 0xFFFF), point2d(0xFFFF, 0));
+        _framebuf.drawTexture(_wallTexture, point3d(x-128, y - 128, 0), point3d(x-128, y + 128, 0), point3d(x+128, y + 128, 0), point3d(x+128, y - 128, 0),
+                              point2d(0, 0), point2d(0, 0xFFFF), point2d(0xFFFF, 0xFFFF), point2d(0xFFFF, 0));
     }
 
     void initFramebuffer(int dx, int dy, int scale) {
